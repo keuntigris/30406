@@ -2,303 +2,283 @@ import streamlit as st
 import time
 import pandas as pd
 import plotly.graph_objects as go
+import random
 
-st.set_page_config(page_title="1차 세계대전 RTS - 1914 유럽", layout="wide")
+st.set_page_config(page_title="1차 세계대전 대전략", layout="wide")
 
 # ----------------------------------------------------
-# 1. 게임 데이터 초기화
+# 1. 게임 데이터 초기화 (이미지 지도 기반 진영 설정)
 # ----------------------------------------------------
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
     st.session_state.last_tick = time.time()
     st.session_state.week = 1
     
-    # 국가 세부 데이터
+    # 전쟁 상태 (시작과 동시에 협상국 vs 동맹국 전쟁 시작)
+    st.session_state.war_status = True
+    
+    # 국가 데이터 (이미지상의 Allied / Central / Neutral 구분)
     st.session_state.countries = {
-        "프랑스": {"gold": 600, "pop": 39000, "manpower": 200, "supplies": 300, "civ_factories": 8, "mil_factories": 5, "alliance": "협상국"},
-        "영국": {"gold": 800, "pop": 45000, "manpower": 220, "supplies": 400, "civ_factories": 10, "mil_factories": 6, "alliance": "협상국"},
-        "러시아 제국": {"gold": 400, "pop": 170000, "manpower": 800, "supplies": 200, "civ_factories": 5, "mil_factories": 4, "alliance": "협상국"},
-        "독일 제국": {"gold": 750, "pop": 67000, "manpower": 350, "supplies": 450, "civ_factories": 11, "mil_factories": 8, "alliance": "동맹국"},
-        "오스트리아-헝가리": {"gold": 450, "pop": 52000, "manpower": 250, "supplies": 250, "civ_factories": 6, "mil_factories": 4, "alliance": "동맹국"},
-        "이탈리아": {"gold": 350, "pop": 35000, "manpower": 150, "supplies": 180, "civ_factories": 5, "mil_factories": 3, "alliance": "중립/협상국"},
+        # 협상국 (Allied Powers - 이미지의 녹색/연두색 계열)
+        "프랑스": {"faction": "협상국", "gold": 600, "pop": 39000, "manpower": 200, "supplies": 300, "civ_factories": 8, "mil_factories": 5},
+        "영국": {"faction": "협상국", "gold": 800, "pop": 45000, "manpower": 220, "supplies": 400, "civ_factories": 10, "mil_factories": 6},
+        "러시아 제국": {"faction": "협상국", "gold": 400, "pop": 170000, "manpower": 800, "supplies": 200, "civ_factories": 5, "mil_factories": 4},
+        "이탈리아": {"faction": "협상국", "gold": 350, "pop": 35000, "manpower": 150, "supplies": 180, "civ_factories": 5, "mil_factories": 3},
+        "세르비아": {"faction": "협상국", "gold": 200, "pop": 4500, "manpower": 80, "supplies": 100, "civ_factories": 2, "mil_factories": 1},
+        
+        # 동맹국 (Central Powers - 이미지의 핑크/분홍색 계열)
+        "독일 제국": {"faction": "동맹국", "gold": 750, "pop": 67000, "manpower": 350, "supplies": 450, "civ_factories": 11, "mil_factories": 8},
+        "오스트리아-헝가리": {"faction": "동맹국", "gold": 450, "pop": 52000, "manpower": 250, "supplies": 250, "civ_factories": 6, "mil_factories": 4},
+        "오스만 제국": {"faction": "동맹국", "gold": 300, "pop": 21000, "manpower": 180, "supplies": 150, "civ_factories": 4, "mil_factories": 2},
+        "불가리아": {"faction": "동맹국", "gold": 200, "pop": 5500, "manpower": 90, "supplies": 100, "civ_factories": 2, "mil_factories": 1},
+        
+        # 중립국 (Neutral Powers - 이미지의 노란색 계열)
+        "스페인": {"faction": "중립국", "gold": 400, "pop": 20000, "manpower": 100, "supplies": 100, "civ_factories": 4, "mil_factories": 1},
+        "스위스": {"faction": "중립국", "gold": 500, "pop": 3800, "manpower": 50, "supplies": 100, "civ_factories": 5, "mil_factories": 1},
     }
     
-    # 1914년 유럽 주요 도시 데이터 (위도, 경도, 소유국, 철도망, 주둔군)
+    # 주요 도시 데이터 (위도, 경도, 소유국, 사기, 보급망, 주둔군)
     st.session_state.cities = {
         # 프랑스
-        "파리 (수도)": {"lat": 48.8566, "lon": 2.3522, "owner": "프랑스", "railway": True, "civ": 3, "mil": 2, "is_capital": True, "garrison": {"보병": 30, "포병": 10, "기병": 5, "공군": 5, "해군": 0}},
-        "마르세유": {"lat": 43.2965, "lon": 5.3698, "owner": "프랑스", "railway": True, "civ": 2, "mil": 1, "is_capital": False, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0, "해군": 15}},
-        "리용": {"lat": 45.7640, "lon": 4.8357, "owner": "프랑스", "railway": True, "civ": 2, "mil": 1, "is_capital": False, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0, "해군": 0}},
-        "베르됭 (요새)": {"lat": 49.1599, "lon": 5.3843, "owner": "프랑스", "railway": False, "civ": 1, "mil": 1, "is_capital": False, "garrison": {"보병": 25, "포병": 15, "기병": 0, "공군": 2, "해군": 0}},
-        
+        "파리": {"lat": 48.8566, "lon": 2.3522, "owner": "프랑스", "railway": True, "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 30, "포병": 10, "기병": 5, "공군": 5}},
+        "베르됭": {"lat": 49.1599, "lon": 5.3843, "owner": "프랑스", "railway": True, "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 25, "포병": 15, "기병": 0, "공군": 2}},
         # 영국
-        "런던 (수도)": {"lat": 51.5074, "lon": -0.1278, "owner": "영국", "railway": True, "civ": 4, "mil": 3, "is_capital": True, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 10, "해군": 20}},
-        "맨체스터": {"lat": 53.4808, "lon": -2.2426, "owner": "영국", "railway": True, "civ": 3, "mil": 2, "is_capital": False, "garrison": {"보병": 10, "포병": 0, "기병": 0, "공군": 0, "해군": 0}},
-        "포츠머스 (해군기지)": {"lat": 50.8198, "lon": -1.0880, "owner": "영국", "railway": True, "civ": 3, "mil": 1, "is_capital": False, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0, "해군": 35}},
-        
+        "런던": {"lat": 51.5074, "lon": -0.1278, "owner": "영국", "railway": True, "morale": 100, "civ": 4, "mil": 3, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 10}},
         # 독일 제국
-        "베를린 (수도)": {"lat": 52.5200, "lon": 13.4050, "owner": "독일 제국", "railway": True, "civ": 4, "mil": 3, "is_capital": True, "garrison": {"보병": 35, "포병": 15, "기병": 10, "공군": 10, "해군": 0}},
-        "함부르크": {"lat": 53.5511, "lon": 9.9937, "owner": "독일 제국", "railway": True, "civ": 3, "mil": 2, "is_capital": False, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 0, "해군": 25}},
-        "뮌헨": {"lat": 48.1351, "lon": 11.5820, "owner": "독일 제국", "railway": True, "civ": 2, "mil": 2, "is_capital": False, "garrison": {"보병": 15, "포병": 5, "기병": 5, "공군": 0, "해군": 0}},
-        "메스 (전선 요새)": {"lat": 49.1193, "lon": 6.1757, "owner": "독일 제국", "railway": True, "civ": 1, "mil": 1, "is_capital": False, "garrison": {"보병": 30, "포병": 20, "기병": 5, "공군": 5, "해군": 0}},
-        "쾨니히스베르크": {"lat": 54.7104, "lon": 20.4522, "owner": "독일 제국", "railway": False, "civ": 1, "mil": 0, "is_capital": False, "garrison": {"보병": 15, "포병": 5, "기병": 5, "공군": 0, "해군": 5}},
-
+        "베를린": {"lat": 52.5200, "lon": 13.4050, "owner": "독일 제국", "railway": True, "morale": 100, "civ": 4, "mil": 3, "garrison": {"보병": 35, "포병": 15, "기병": 10, "공군": 10}},
+        "메스": {"lat": 49.1193, "lon": 6.1757, "owner": "독일 제국", "railway": True, "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 30, "포병": 20, "기병": 5, "공군": 5}},
         # 오스트리아-헝가리
-        "빈 (수도)": {"lat": 48.2082, "lon": 16.3738, "owner": "오스트리아-헝가리", "railway": True, "civ": 3, "mil": 2, "is_capital": True, "garrison": {"보병": 25, "포병": 10, "기병": 10, "공군": 2, "해군": 0}},
-        "부다페스트": {"lat": 47.4979, "lon": 19.0402, "owner": "오스트리아-헝가리", "railway": True, "civ": 2, "mil": 1, "is_capital": False, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 0, "해군": 0}},
-        "프라하": {"lat": 50.0755, "lon": 14.4378, "owner": "오스트리아-헝가리", "railway": True, "civ": 1, "mil": 1, "is_capital": False, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0, "해군": 0}},
-        "사라예보": {"lat": 43.8563, "lon": 18.4131, "owner": "오스트리아-헝가리", "railway": False, "civ": 0, "mil": 0, "is_capital": False, "garrison": {"보병": 15, "포병": 0, "기병": 2, "공군": 0, "해군": 0}},
-
+        "빈": {"lat": 48.2082, "lon": 16.3738, "owner": "오스트리아-헝가리", "railway": True, "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 10, "공군": 2}},
+        "사라예보": {"lat": 43.8563, "lon": 18.4131, "owner": "오스트리아-헝가리", "railway": False, "morale": 90, "civ": 1, "mil": 0, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
         # 러시아 제국
-        "상트페테르부르크 (수도)": {"lat": 59.9311, "lon": 30.3609, "owner": "러시아 제국", "railway": True, "civ": 2, "mil": 2, "is_capital": True, "garrison": {"보병": 40, "포병": 10, "기병": 15, "공군": 2, "해군": 10}},
-        "모스크바": {"lat": 55.7558, "lon": 37.6173, "owner": "러시아 제국", "railway": True, "civ": 2, "mil": 1, "is_capital": False, "garrison": {"보병": 30, "포병": 5, "기병": 10, "공군": 0, "해군": 0}},
-        "바르샤바": {"lat": 52.2297, "lon": 21.0122, "owner": "러시아 제국", "railway": False, "civ": 1, "mil": 1, "is_capital": False, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0, "해군": 0}},
-        "오데사": {"lat": 46.4825, "lon": 30.7233, "owner": "러시아 제국", "railway": True, "civ": 1, "mil": 0, "is_capital": False, "garrison": {"보병": 15, "포병": 0, "기병": 5, "공군": 0, "해군": 10}},
-
-        # 이탈리아
-        "로마 (수도)": {"lat": 41.9028, "lon": 12.4964, "owner": "이탈리아", "railway": True, "civ": 2, "mil": 1, "is_capital": True, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 2, "해군": 10}},
-        "밀라노": {"lat": 45.4642, "lon": 9.1900, "owner": "이탈리아", "railway": True, "civ": 2, "mil": 1, "is_capital": False, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 0, "해군": 0}},
-        "나폴리": {"lat": 40.8518, "lon": 14.2681, "owner": "이탈리아", "railway": False, "civ": 1, "mil": 1, "is_capital": False, "garrison": {"보병": 10, "포병": 0, "기병": 0, "공군": 0, "해군": 10}},
+        "상트페테르부르크": {"lat": 59.9311, "lon": 30.3609, "owner": "러시아 제국", "railway": True, "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 40, "포병": 10, "기병": 15, "공군": 2}},
+        "바르샤바": {"lat": 52.2297, "lon": 21.0122, "owner": "러시아 제국", "railway": False, "morale": 85, "civ": 1, "mil": 1, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0}},
+        # 오스만 제국
+        "이스탄불": {"lat": 41.0082, "lon": 28.9784, "owner": "오스만 제국", "railway": True, "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 0}},
+        # 중립국
+        "마드리드": {"lat": 40.4168, "lon": -3.7038, "owner": "스페인", "railway": True, "morale": 100, "civ": 2, "mil": 0, "garrison": {"보병": 10, "포병": 0, "기병": 0, "공군": 0}},
     }
     
     st.session_state.player_country = "프랑스"
 
-# 병종 스펙 정의 (비용, 생산주기, 스탯)
 UNIT_SPECS = {
-    "보병 사단": {"gold": 30, "manpower": 50, "supplies": 20, "attack": 25, "defense": 35, "icon": "🪖"},
-    "포병 사단": {"gold": 80, "manpower": 20, "supplies": 60, "attack": 55, "defense": 15, "icon": "💥"},
-    "기병 사단": {"gold": 50, "manpower": 30, "supplies": 30, "attack": 30, "defense": 20, "icon": "🐎"},
-    "비행대대": {"gold": 120, "manpower": 10, "supplies": 80, "attack": 70, "defense": 10, "icon": "✈️"},
-    "해군 함대": {"gold": 200, "manpower": 40, "supplies": 120, "attack": 80, "defense": 60, "icon": "⚓"},
+    "보병": {"gold": 30, "manpower": 50, "supplies": 20, "atk": 20, "def": 30},
+    "포병": {"gold": 80, "manpower": 20, "supplies": 60, "atk": 50, "def": 10},
+    "기병": {"gold": 50, "manpower": 30, "supplies": 30, "atk": 25, "def": 15},
+    "공군": {"gold": 120, "manpower": 10, "supplies": 80, "atk": 60, "def": 5},
 }
 
 # ----------------------------------------------------
-# 2. 1주(10초) 주기 실시간 타이머 및 자원 갱신
+# 2. 실시간 시간 경과 및 자원/사기 관리 (10초 = 1주)
 # ----------------------------------------------------
 current_time = time.time()
 if current_time - st.session_state.last_tick >= 10:
     st.session_state.week += 1
     st.session_state.last_tick = current_time
     
-    # 국가 자원 획득
-    for country, data in st.session_state.countries.items():
-        data["gold"] += data["civ_factories"] * 25
-        data["manpower"] += int(data["pop"] * 0.002)
-        data["supplies"] += data["mil_factories"] * 20
+    # 주간 자원 및 사기 회복 로직
+    for c_name, c_data in st.session_state.countries.items():
+        c_data["gold"] += c_data["civ_factories"] * 25
+        c_data["manpower"] += int(c_data["pop"] * 0.002)
+        c_data["supplies"] += c_data["mil_factories"] * 20
+        
+    for city_name, city_info in st.session_state.cities.items():
+        # 사기 천천히 회복 (최대 100)
+        city_info["morale"] = min(100, city_info["morale"] + 2)
 
 # ----------------------------------------------------
-# 3. 사이드바 및 레이아웃
+# 3. UI 및 대시보드
 # ----------------------------------------------------
-st.title("📜 1914년 유럽: 1차 세계대전 대전략")
-st.caption(f"🗓️ Current Time: 1914년 {st.session_state.week}주 차 (1주 = 현실 10초)")
+st.title("⚔️ 1차 세계대전: 대전착 실시간 전장")
+
+# 전쟁 상태 안내
+st.error("🔥 **[전쟁 상태]** 협상국(Allied Powers)과 동맹국(Central Powers) 간의 전면전이 진행 중입니다!")
 
 selected_country = st.sidebar.selectbox(
-    "👑 플레이할 국가 선택:",
+    "플레이할 국가 선택:",
     list(st.session_state.countries.keys()),
     index=list(st.session_state.countries.keys()).index(st.session_state.player_country)
 )
 st.session_state.player_country = selected_country
+
 my_country = st.session_state.countries[selected_country]
+my_faction = my_country["faction"]
 
-# 상단 대시보드
 col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("💰 국고 (Gold)", f"{my_country['gold']} G")
-col2.metric("🪖 징집 가능 인력", f"{my_country['manpower']} 명")
-col3.metric("📦 보급품", f"{my_country['supplies']} 톤")
-col4.metric("🏭 민간 공장", f"{my_country['civ_factories']} 개")
-col5.metric("⚔️ 군수 공장", f"{my_country['mil_factories']} 개")
-
-st.divider()
+col1.metric("소속 진영", my_faction)
+col2.metric("골드", f"{my_country['gold']} G")
+col3.metric("인력", f"{my_country['manpower']} 명")
+col4.metric("보급품", f"{my_country['supplies']} 톤")
+col5.metric("공장(민/군)", f"{my_country['civ_factories']} / {my_country['mil_factories']}")
 
 # ----------------------------------------------------
-# 4. 1차 세계대전 빈티지 스타일 지도의 구현 (Plotly)
+# 4. 이미지 기반 지도 시각화 (Plotly)
 # ----------------------------------------------------
-st.subheader("🗺️ 1914년 유럽 전장 지도 (고전 고지도 스타일)")
-
-country_colors = {
-    "프랑스": "#1F4E79",          # 프렌치 블루
-    "영국": "#A61C1C",            # 브리티시 레드
-    "독일 제국": "#2E4053",        # 프로이센 회검정
-    "오스트리아-헝가리": "#D4AC0D",  # 황제 옐로우
-    "러시아 제국": "#4A235A",     # 제국 퍼플
-    "이탈리아": "#196F3D"          # 사보이 그린
-}
+st.subheader("🗺️ 1914 유럽 전장 지도")
 
 fig = go.Figure()
 
-# 철도망 연결선 그리기 (주요 도시 연결)
-railway_pairs = [
-    ("파리 (수도)", "베르됭 (요새)"), ("파리 (수도)", "마르세유"), ("베를린 (수도)", "메스 (전선 요새)"),
-    ("베를린 (수도)", "함부르크"), ("베를린 (수도)", "뮌헨"), ("빈 (수도)", "부다페스트"),
-    ("빈 (수도)", "프라하"), ("상트페테르부르크 (수도)", "모스크바"), ("로마 (수도)", "밀라노")
-]
-
-for c1, c2 in railway_pairs:
-    if c1 in st.session_state.cities and c2 in st.session_state.cities:
-        lat1, lon1 = st.session_state.cities[c1]["lat"], st.session_state.cities[c1]["lon"]
-        lat2, lon2 = st.session_state.cities[c2]["lat"], st.session_state.cities[c2]["lon"]
-        fig.add_trace(go.Scattergeo(
-            lat=[lat1, lat2],
-            lon=[lon1, lon2],
-            mode="lines",
-            line=dict(width=1.5, color="#7B7D7D", dash="dash"),
-            hoverinfo="none",
-            showlegend=False
-        ))
+# 이미지 지도 기반 색상 정의
+FACTION_COLORS = {
+    "협상국": "#5B8C5A",   # 연두/녹색 (Allied Powers)
+    "동맹국": "#D98880",   # 분홍/연붉은색 (Central Powers)
+    "중립국": "#F7DC6F"    # 노란색 (Neutral Powers)
+}
 
 # 도시 마커 추가
 for c_name, c_info in st.session_state.cities.items():
-    g_text = "<br>".join([f"{k}: {v}" for k, v in c_info["garrison"].items() if v > 0])
-    hover_content = f"<b>{c_name}</b><br>소유국: {c_info['owner']}<br>철도 연결: {'예' if c_info['railway'] else '아니오'}<br><br><b>주둔군:</b><br>{g_text if g_text else '없음'}"
+    owner_country = c_info["owner"]
+    faction = st.session_state.countries[owner_country]["faction"]
+    marker_color = FACTION_COLORS[faction]
     
-    # 마커 모양 (수도는 별, 일반 도시는 원형)
-    symbol_type = "star" if c_info["is_capital"] else "circle"
-    marker_size = 16 if c_info["is_capital"] else 11
+    gar = c_info["garrison"]
+    total_army = gar["보병"] + gar["포병"] + gar["기병"]
+    
+    hover_text = f"<b>{c_name}</b><br>소유국: {owner_country} ({faction})<br>사기: {c_info['morale']}%<br>철도: {'있음' if c_info['railway'] else '없음 (보급 감소)'}<br>육군 수: {total_army}"
     
     fig.add_trace(go.Scattergeo(
         lat=[c_info["lat"]],
         lon=[c_info["lon"]],
         text=c_name,
         hoverinfo="text",
-        hovertext=hover_content,
+        hovertext=hover_text,
         mode="markers+text",
         textposition="top center",
         marker=dict(
-            size=marker_size,
-            color=country_colors.get(c_info["owner"], "#5D6D7E"),
-            symbol=symbol_type,
-            line=dict(width=1, color="#1C2833")
+            size=14,
+            color=marker_color,
+            line=dict(width=1.5, color="#2C3E50")
         ),
-        name=c_info["owner"],
         showlegend=False
     ))
 
-# 고지도 느낌(양피지/빈티지 톤) 스타일링
 fig.update_geos(
     center=dict(lat=50, lon=15),
-    lataxis_range=[36, 62],
-    lonaxis_range=[-10, 38],
+    lataxis_range=[35, 63],
+    lonaxis_range=[-10, 40],
     showcountries=True,
-    countrycolor="#85929E",
-    showcoastlines=True,
-    coastlinecolor="#5D6D7E",
+    countrycolor="#BDC3C7",
     showland=True,
-    landcolor="#EAECEE",      # 고지도 양피지 느낌의 연한 회갈색
+    landcolor="#EAEDED",
     showocean=True,
-    oceancolor="#D4E6F1",     # 고서화 스타일의 연한 파스텔 바다색
+    oceancolor="#EBF5FB",
     projection_type="natural earth"
 )
 
-fig.update_layout(
-    height=550,
-    margin={"r":0, "t":10, "l":0, "b":0},
-    paper_bgcolor="#F2F4F4"
-)
-
+fig.update_layout(height=500, margin={"r":0, "t":10, "l":0, "b":0})
 st.plotly_chart(fig, use_container_width=True)
 
 # ----------------------------------------------------
-# 5. 재설계된 군사 양성 및 내정 시스템
+# 5. 전투 및 영토 점령 시스템
 # ----------------------------------------------------
-tab1, tab2, tab3 = st.tabs(["🪖 군사 훈련 및 양성", "🏭 공장 건설 & 내정", "⚔️ 전선 및 영토 정보"])
+st.divider()
+st.subheader("⚔️ 진격 및 전투 명령")
 
-with tab1:
-    st.subheader("🎖️ 병종별 군사 훈련소")
-    
-    # 자국 소유 도시만 필터링
-    my_cities = [name for name, data in st.session_state.cities.items() if data["owner"] == selected_country]
-    
-    c1, c2 = st.columns([1, 2])
+tab_attack, tab_air, tab_train = st.tabs(["🪖 육군 진격/전투", "✈️ 공장/도시 포격", "🎖️ 군사 훈련"])
+
+with tab_attack:
+    c1, c2 = st.columns(2)
     with c1:
-        target_city_train = st.selectbox("군사를 배치할 도시 선택:", my_cities)
-        unit_choice = st.selectbox("양성할 병종 선택:", list(UNIT_SPECS.keys()))
-        unit_qty = st.slider("양성 수량 (개 사단/대대):", 1, 10, 1)
+        my_cities = [k for k, v in st.session_state.cities.items() if v["owner"] == selected_country]
+        from_city = st.selectbox("출발 도시:", my_cities if my_cities else ["없음"])
         
-        spec = UNIT_SPECS[unit_choice]
-        total_gold = spec["gold"] * unit_qty
-        total_mp = spec["manpower"] * unit_qty
-        total_sup = spec["supplies"] * unit_qty
-        
-        st.markdown(f"""
-        **필요 자원:**
-        - 💰 골드: `{total_gold}` G
-        - 🪖 인력: `{total_mp}` 명
-        - 📦 보급품: `{total_sup}` 톤
-        """)
-        
-        if st.button("🚀 군사 모집 명령 하사"):
-            if my_country["gold"] < total_gold:
-                st.error("골드가 부족합니다!")
-            elif my_country["manpower"] < total_mp:
-                st.error("징집 인력이 부족합니다!")
-            elif my_country["supplies"] < total_sup:
-                st.error("보급품이 부족합니다!")
-            else:
-                # 자원 차감
-                my_country["gold"] -= total_gold
-                my_country["manpower"] -= total_mp
-                my_country["supplies"] -= total_sup
-                
-                # 도시 주둔군 추가 (단순화된 형태: 보병/포병/기병/공군/해군 범주 매핑)
-                category = unit_choice.split()[0] # '보병', '포병', '기병', '비행대대', '해군'
-                if category == "비행대대": category = "공군"
-                elif category == "해군": category = "해군"
-                
-                st.session_state.cities[target_city_train]["garrison"][category] += unit_qty
-                st.success(f"{target_city_train}에 {unit_choice} {unit_qty}개가 성공적으로 훈련되어 주둔했습니다!")
-                st.rerun()
-
     with c2:
-        st.markdown("### 📋 병종 스펙 가이드")
-        spec_df = pd.DataFrame.from_dict(UNIT_SPECS, orient="index")
-        st.dataframe(spec_df[["gold", "manpower", "supplies", "attack", "defense"]], use_container_width=True)
+        # 타국 도시 전체
+        target_cities = [k for k, v in st.session_state.cities.items() if v["owner"] != selected_country]
+        to_city = st.selectbox("목표 공격/점령 도시:", target_cities)
 
-with tab2:
-    st.subheader("🏗️ 국가 산업 발전")
-    col_a, col_b = st.columns(2)
-    
-    with col_a:
-        st.markdown("#### 🏢 민간 공장 확충 (Cost: 100 Gold)")
-        st.write("주간 Gold 생산량을 늘려줍니다.")
-        if st.button("민간 공장 건설 (+1)"):
-            if my_country["gold"] >= 100:
-                my_country["gold"] -= 100
-                my_country["civ_factories"] += 1
-                st.success("민간 공장이 완공되었습니다.")
-                st.rerun()
+    if st.button("⚔️ 공격 개시"):
+        if not my_cities:
+            st.error("소유한 도시가 없습니다.")
+        else:
+            attacker_city = st.session_state.cities[from_city]
+            defender_city = st.session_state.cities[to_city]
+            
+            defender_owner = defender_city["owner"]
+            defender_faction = st.session_state.countries[defender_owner]["faction"]
+            
+            if defender_faction == my_faction:
+                st.warning("같은 진영의 국가는 공격할 수 없습니다.")
             else:
-                st.error("골드가 부족합니다.")
+                # 공격력 및 방어력 계산 (사기 및 보급/철도 반영)
+                att_gar = attacker_city["garrison"]
+                def_gar = defender_city["garrison"]
                 
-    with col_b:
-        st.markdown("#### 🔫 군수 공장 확충 (Cost: 100 Gold)")
-        st.write("주간 보급품 생산량을 늘려줍니다.")
-        if st.button("군수 공장 건설 (+1)"):
-            if my_country["gold"] >= 100:
-                my_country["gold"] -= 100
-                my_country["mil_factories"] += 1
-                st.success("군수 공장이 완공되었습니다.")
-                st.rerun()
-            else:
-                st.error("골드가 부족합니다.")
+                # 사기 및 철도 보너스/패널티
+                att_morale_mult = attacker_city["morale"] / 100.0
+                def_morale_mult = defender_city["morale"] / 100.0
+                
+                att_rail_mult = 1.0 if attacker_city["railway"] else 0.7
+                def_rail_mult = 1.0 if defender_city["railway"] else 0.7
+                
+                att_power = (att_gar["보병"]*20 + att_gar["포병"]*50 + att_gar["기병"]*25) * att_morale_mult * att_rail_mult
+                def_power = (def_gar["보병"]*30 + def_gar["포병"]*10 + def_gar["기병"]*15) * def_morale_mult * def_rail_mult
+                
+                # 주둔군 손실 난수 연산
+                if att_power > def_power:
+                    # 공격 성공: 도시 점령 처리
+                    st.session_state.cities[to_city]["owner"] = selected_country
+                    # 공장 이관
+                    civ_stolen = defender_city["civ"]
+                    mil_stolen = defender_city["mil"]
+                    st.session_state.countries[defender_owner]["civ_factories"] = max(0, st.session_state.countries[defender_owner]["civ_factories"] - civ_stolen)
+                    st.session_state.countries[defender_owner]["mil_factories"] = max(0, st.session_state.countries[defender_owner]["mil_factories"] - mil_stolen)
+                    my_country["civ_factories"] += civ_stolen
+                    my_country["mil_factories"] += mil_stolen
+                    
+                    # 주둔군 및 사기 차감
+                    defender_city["garrison"] = {"보병": 5, "포병": 0, "기병": 0, "공군": 0}
+                    attacker_city["morale"] = max(10, attacker_city["morale"] - 20)
+                    
+                    st.success(f"🎉 승리! {to_city}을(를) 점령했습니다! (공장 {civ_stolen + mil_stolen}개 확보)")
+                    st.rerun()
+                else:
+                    # 공격 실패: 최근 전투로 사기 저하
+                    attacker_city["morale"] = max(10, attacker_city["morale"] - 35)
+                    st.error(f"💥 패배! {to_city} 방어선 돌파에 실패했습니다. (공격 부대 사기 감소)")
 
-with tab3:
-    st.subheader("📊 유럽 전체 도시 현황 판")
-    city_summary = []
-    for c_name, c_info in st.session_state.cities.items():
-        gar = c_info["garrison"]
-        total_army = gar["보병"] + gar["포병"] + gar["기병"]
-        city_summary.append({
-            "도시명": c_name,
-            "소유국": c_info["owner"],
-            "철도": "O" if c_info["railway"] else "X",
-            "민간공장": c_info["civ"],
-            "군공장": c_info["mil"],
-            "육군": total_army,
-            "공군": gar["공군"],
-            "해군": gar["해군"]
-        })
-    st.dataframe(pd.DataFrame(city_summary), use_container_width=True)
+with tab_air:
+    st.markdown("### ✈️ 공군 포격 (상대 도시 공장 파괴 및 병력 피해)")
+    air_from = st.selectbox("발진 도시 (공군 보유 필요):", [k for k, v in st.session_state.cities.items() if v["owner"] == selected_country and v["garrison"]["공군"] > 0] or ["공군 없음"])
+    air_target = st.selectbox("포격 목표 도시:", [k for k, v in st.session_state.cities.items() if v["owner"] != selected_country])
+    
+    if st.button("💣 공습 개시"):
+        if air_from == "공군 없음":
+            st.error("공군을 보유한 도시가 없습니다.")
+        else:
+            target = st.session_state.cities[air_target]
+            target_owner = st.session_state.countries[target["owner"]]
+            
+            # 피격 처리: 공장 파괴 및 육군 피해
+            if target["civ"] > 0 and random.random() > 0.5:
+                target["civ"] -= 1
+                target_owner["civ_factories"] = max(0, target_owner["civ_factories"] - 1)
+            elif target["mil"] > 0:
+                target["mil"] -= 1
+                target_owner["mil_factories"] = max(0, target_owner["mil_factories"] - 1)
+                
+            target["garrison"]["보병"] = max(0, target["garrison"]["보병"] - 5)
+            target["morale"] = max(10, target["morale"] - 15)
+            
+            st.warning(f"💥 {air_target}에 성공적으로 포격을 가했습니다! (시설 파괴 및 병력 피격)")
+            st.rerun()
 
-# 10초 실시간 주기 보장을 위한 리런
+with tab_train:
+    st.markdown("### 🎖️ 군사 양성")
+    train_city = st.selectbox("양성할 도시:", my_cities if my_cities else ["없음"])
+    unit_type = st.selectbox("병종:", list(UNIT_SPECS.keys()))
+    
+    if st.button("훈련 시작"):
+        spec = UNIT_SPECS[unit_type]
+        if my_country["gold"] >= spec["gold"] and my_country["manpower"] >= spec["manpower"] and my_country["supplies"] >= spec["supplies"]:
+            my_country["gold"] -= spec["gold"]
+            my_country["manpower"] -= spec["manpower"]
+            my_country["supplies"] -= spec["supplies"]
+            st.session_state.cities[train_city]["garrison"][unit_type] += 1
+            st.success(f"{train_city}에 {unit_type} 1개 유닛을 생성했습니다.")
+            st.rerun()
+        else:
+            st.error("자원이 부족합니다.")
+
 time.sleep(1)
 st.rerun()
