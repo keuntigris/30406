@@ -18,10 +18,10 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-MAX_ATTACK_DISTANCE = 700  # 도로 연결 및 이동 가능 최대 거리 (km)
+MAX_ATTACK_DISTANCE = 650  # 도로 연결 및 이동 가능 최대 거리 (km)
 
 # ----------------------------------------------------
-# 1. 게임 데이터 초기화
+# 1. 게임 데이터 초기화 (도시 대폭 추가)
 # ----------------------------------------------------
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
@@ -31,36 +31,62 @@ if "initialized" not in st.session_state:
     st.session_state.battle_logs = []
     
     st.session_state.countries = {
-        "프랑스": {"faction": "협상국", "color": "#1F4E79", "gold": 800, "pop": 39000, "manpower": 300, "supplies": 400, "civ_factories": 10, "mil_factories": 6},
-        "영국": {"faction": "협상국", "color": "#C0392B", "gold": 1000, "pop": 45000, "manpower": 350, "supplies": 500, "civ_factories": 12, "mil_factories": 8},
-        "러시아 제국": {"faction": "협상국", "color": "#7D3C98", "gold": 500, "pop": 170000, "manpower": 1000, "supplies": 300, "civ_factories": 7, "mil_factories": 5},
-        "이탈리아": {"faction": "협상국", "color": "#27AE60", "gold": 450, "pop": 35000, "manpower": 200, "supplies": 250, "civ_factories": 6, "mil_factories": 4},
-        "독일 제국": {"faction": "동맹국", "color": "#2C3E50", "gold": 900, "pop": 67000, "manpower": 500, "supplies": 600, "civ_factories": 14, "mil_factories": 10},
-        "오스트리아-헝가리": {"faction": "동맹국", "color": "#D4AC0D", "gold": 600, "pop": 52000, "manpower": 350, "supplies": 350, "civ_factories": 8, "mil_factories": 5},
-        "오스만 제국": {"faction": "동맹국", "color": "#E67E22", "gold": 400, "pop": 21000, "manpower": 250, "supplies": 200, "civ_factories": 5, "mil_factories": 3},
+        "프랑스": {"faction": "협상국", "color": "#1F4E79", "gold": 1200, "pop": 39000, "manpower": 400, "supplies": 500, "civ_factories": 15, "mil_factories": 10},
+        "영국": {"faction": "협상국", "color": "#C0392B", "gold": 1500, "pop": 45000, "manpower": 450, "supplies": 600, "civ_factories": 18, "mil_factories": 12},
+        "러시아 제국": {"faction": "협상국", "color": "#7D3C98", "gold": 800, "pop": 170000, "manpower": 1200, "supplies": 450, "civ_factories": 12, "mil_factories": 8},
+        "이탈리아": {"faction": "협상국", "color": "#27AE60", "gold": 600, "pop": 35000, "manpower": 300, "supplies": 300, "civ_factories": 9, "mil_factories": 6},
+        "독일 제국": {"faction": "동맹국", "color": "#2C3E50", "gold": 1400, "pop": 67000, "manpower": 700, "supplies": 800, "civ_factories": 20, "mil_factories": 15},
+        "오스트리아-헝가리": {"faction": "동맹국", "color": "#D4AC0D", "gold": 800, "pop": 52000, "manpower": 500, "supplies": 450, "civ_factories": 12, "mil_factories": 8},
+        "오스만 제국": {"faction": "동맹국", "color": "#E67E22", "gold": 500, "pop": 21000, "manpower": 300, "supplies": 250, "civ_factories": 7, "mil_factories": 4},
     }
     
+    # 32개 도시 데이터
     st.session_state.cities = {
+        # 프랑스
         "파리": {"lat": 48.8566, "lon": 2.3522, "owner": "프랑스", "morale": 100, "civ": 4, "mil": 2, "garrison": {"보병": 30, "포병": 10, "기병": 5, "공군": 5}},
         "베르됭": {"lat": 49.1599, "lon": 5.3843, "owner": "프랑스", "morale": 100, "civ": 1, "mil": 2, "garrison": {"보병": 25, "포병": 15, "기병": 0, "공군": 2}},
         "마르세유": {"lat": 43.2965, "lon": 5.3698, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
         "리용": {"lat": 45.7640, "lon": 4.8357, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0}},
+        "보르도": {"lat": 44.8378, "lon": -0.5792, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
+        "릴": {"lat": 50.6292, "lon": 3.0573, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 20, "포병": 8, "기병": 0, "공군": 0}},
+
+        # 영국
         "런던": {"lat": 51.5074, "lon": -0.1278, "owner": "영국", "morale": 100, "civ": 5, "mil": 3, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 10}},
         "맨체스터": {"lat": 53.4808, "lon": -2.2426, "owner": "영국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 0}},
         "에든버러": {"lat": 55.9533, "lon": -3.1883, "owner": "영국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 0, "기병": 2, "공군": 0}},
+        "칼레 (영국 통제)": {"lat": 50.9513, "lon": 1.8587, "owner": "영국", "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 2}},
+
+        # 독일 제국
         "베를린": {"lat": 52.5200, "lon": 13.4050, "owner": "독일 제국", "morale": 100, "civ": 5, "mil": 4, "garrison": {"보병": 35, "포병": 15, "기병": 10, "공군": 10}},
         "메스": {"lat": 49.1193, "lon": 6.1757, "owner": "독일 제국", "morale": 100, "civ": 1, "mil": 2, "garrison": {"보병": 30, "포병": 20, "기병": 5, "공군": 5}},
         "함부르크": {"lat": 53.5511, "lon": 9.9937, "owner": "독일 제국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 0}},
         "뮌헨": {"lat": 48.1351, "lon": 11.5820, "owner": "독일 제국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 5, "공군": 0}},
+        "쾰른": {"lat": 50.9375, "lon": 6.9603, "owner": "독일 제국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 20, "포병": 10, "기병": 2, "공군": 0}},
+        "쾨니히스베르크": {"lat": 54.7104, "lon": 20.4522, "owner": "독일 제국", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0}},
+
+        # 오스트리아-헝가리
         "빈": {"lat": 48.2082, "lon": 16.3738, "owner": "오스트리아-헝가리", "morale": 100, "civ": 4, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 10, "공군": 2}},
         "부다페스트": {"lat": 47.4979, "lon": 19.0402, "owner": "오스트리아-헝가리", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 0}},
         "프라하": {"lat": 50.0755, "lon": 14.4378, "owner": "오스트리아-헝가리", "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0}},
         "사라예보": {"lat": 43.8563, "lon": 18.4131, "owner": "오스트리아-헝가리", "morale": 85, "civ": 1, "mil": 0, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
+        "트리에스테": {"lat": 45.6495, "lon": 13.7768, "owner": "오스트리아-헝가리", "morale": 90, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 4, "기병": 0, "공군": 0}},
+        "크라쿠프": {"lat": 50.0647, "lon": 19.9450, "owner": "오스트리아-헝가리", "morale": 95, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 3, "공군": 0}},
+
+        # 러시아 제국
         "상트페테르부르크": {"lat": 59.9311, "lon": 30.3609, "owner": "러시아 제국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 40, "포병": 10, "기병": 15, "공군": 2}},
         "모스크바": {"lat": 55.7558, "lon": 37.6173, "owner": "러시아 제국", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 30, "포병": 5, "기병": 10, "공군": 0}},
         "바르샤바": {"lat": 52.2297, "lon": 21.0122, "owner": "러시아 제국", "morale": 85, "civ": 1, "mil": 1, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0}},
+        "키예프": {"lat": 50.4501, "lon": 30.5234, "owner": "러시아 제국", "morale": 95, "civ": 2, "mil": 1, "garrison": {"보병": 20, "포병": 5, "기병": 8, "공군": 0}},
+        "민스크": {"lat": 53.9006, "lon": 27.5590, "owner": "러시아 제국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 18, "포병": 4, "기병": 4, "공군": 0}},
+
+        # 이탈리아
         "로마": {"lat": 41.9028, "lon": 12.4964, "owner": "이탈리아", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 2}},
+        "밀라노": {"lat": 45.4642, "lon": 9.1900, "owner": "이탈리아", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 18, "포병": 6, "기병": 2, "공군": 0}},
+        "베네치아": {"lat": 45.4408, "lon": 12.3155, "owner": "이탈리아", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 4, "기병": 0, "공군": 0}},
+
+        # 오스만 제국
         "이스탄불": {"lat": 41.0082, "lon": 28.9784, "owner": "오스만 제국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0}},
+        "앙카라": {"lat": 39.9334, "lon": 32.8597, "owner": "오스만 제국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 5, "공군": 0}},
     }
     st.session_state.player_country = "프랑스"
 
@@ -72,7 +98,7 @@ UNIT_SPECS = {
 }
 
 # ----------------------------------------------------
-# 2. 타이머 (10초 = 1주)
+# 2. 자원 업데이트 (1주차 단위)
 # ----------------------------------------------------
 current_time = time.time()
 if current_time - st.session_state.last_tick >= 10:
@@ -86,7 +112,7 @@ if current_time - st.session_state.last_tick >= 10:
 # ----------------------------------------------------
 # 3. UI 및 상단 메트릭
 # ----------------------------------------------------
-st.title("⚔️ 1차 세계대전 대전략 - 도로망 연결 전장")
+st.title("⚔️ 1차 세계대전 대전략 - 확장 유럽 전장")
 
 selected_country = st.sidebar.selectbox(
     "플레이할 국가 선택:",
@@ -104,19 +130,17 @@ c4.metric("보급품", f"{my_country['supplies']} 톤")
 c5.metric("공장(민/군)", f"{my_country['civ_factories']} / {my_country['mil_factories']}")
 
 # ----------------------------------------------------
-# 4. 지도 시각화 (도시 간 도로 연결 네트워크 추가)
+# 4. 지도 시각화
 # ----------------------------------------------------
-st.subheader("🗺️ 1914 유럽 도로망 및 전장 지도")
+st.subheader("🗺️ 1914 유럽 도로망 및 도시 지도")
 
 fig = go.Figure()
 
-# 1) 도로망 시각화 (700km 이내 인접 도시 선 연결)
 city_list = list(st.session_state.cities.items())
-drawn_edges = set()
-
 road_lats = []
 road_lons = []
 
+# 인접 도시 도로망 연결 (650km 이내)
 for i in range(len(city_list)):
     for j in range(i + 1, len(city_list)):
         c1_name, c1_info = city_list[i]
@@ -136,7 +160,7 @@ fig.add_trace(go.Scattergeo(
     showlegend=False
 ))
 
-# 2) 도시 마커 시각화
+# 도시 마커
 for c_name, c_info in st.session_state.cities.items():
     owner_country = c_info["owner"]
     country_color = st.session_state.countries[owner_country]["color"]
@@ -156,11 +180,11 @@ for c_name, c_info in st.session_state.cities.items():
         hovertext=hover_text,
         mode="markers+text",
         textposition="top center",
-        marker=dict(size=13, color=country_color, line=dict(width=1, color="#000000")),
+        marker=dict(size=12, color=country_color, line=dict(width=1, color="#000000")),
         showlegend=False
     ))
 
-# 3) 전투 진격 시각화
+# 전투 애니메이션 표시
 if st.session_state.battle_animation:
     anim = st.session_state.battle_animation
     from_c = st.session_state.cities[anim["from"]]
@@ -195,7 +219,7 @@ fig.update_geos(
     oceancolor="#EBF5FB",
     projection_type="natural earth"
 )
-fig.update_layout(height=480, margin={"r":0, "t":10, "l":0, "b":0})
+fig.update_layout(height=520, margin={"r":0, "t":10, "l":0, "b":0})
 st.plotly_chart(fig, use_container_width=True)
 
 # ----------------------------------------------------
@@ -325,6 +349,3 @@ with tab_air:
             target["morale"] = max(10, target["morale"] - 20)
             st.warning(f"💥 {air_target} 공습 완료!")
             st.rerun()
-
-time.sleep(1)
-st.rerun()
