@@ -18,7 +18,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-MAX_ATTACK_DISTANCE = 550  # 도시 수가 늘어났으므로 촘촘한 전선을 위해 최대 공격 거리를 550km로 조정
+MAX_ATTACK_DISTANCE = 500  # 고밀도 도시 배치에 맞춰 최대 연결 거리를 500km로 설정
 
 UNIT_SPECS = {
     "보병": {"gold": 30, "manpower": 50, "supplies": 20, "atk": 20, "def": 30},
@@ -47,6 +47,7 @@ if "initialized" not in st.session_state:
         "독일 제국": {"faction": "동맹국", "color": "#2C3E50", "gold": 1400, "pop": 67000, "manpower": 700, "supplies": 800, "civ_factories": 20, "mil_factories": 15},
         "오스트리아-헝가리": {"faction": "동맹국", "color": "#D4AC0D", "gold": 800, "pop": 52000, "manpower": 500, "supplies": 450, "civ_factories": 12, "mil_factories": 8},
         "오스만 제국": {"faction": "동맹국", "color": "#E67E22", "gold": 500, "pop": 21000, "manpower": 300, "supplies": 250, "civ_factories": 7, "mil_factories": 4},
+        "중립국": {"faction": "중립", "color": "#7F8C8D", "gold": 1000, "pop": 30000, "manpower": 200, "supplies": 200, "civ_factories": 10, "mil_factories": 5},
     }
     
     st.session_state.cities = {
@@ -61,6 +62,8 @@ if "initialized" not in st.session_state:
         "툴루즈": {"lat": 43.6047, "lon": 1.4442, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
         "스트라스부르": {"lat": 48.5734, "lon": 7.7521, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 18, "포병": 8, "기병": 2, "공군": 0}},
         "니스": {"lat": 43.7102, "lon": 7.2620, "owner": "프랑스", "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 8, "포병": 2, "기병": 1, "공군": 0}},
+        "랭스": {"lat": 49.2583, "lon": 4.0317, "owner": "프랑스", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 0}},
+        "브레스트": {"lat": 48.3904, "lon": -4.4861, "owner": "프랑스", "morale": 100, "civ": 1, "mil": 2, "garrison": {"보병": 10, "포병": 4, "기병": 0, "공군": 0}},
 
         # --- 영국 ---
         "런던": {"lat": 51.5074, "lon": -0.1278, "owner": "영국", "morale": 100, "civ": 5, "mil": 3, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 10}},
@@ -70,7 +73,9 @@ if "initialized" not in st.session_state:
         "글래스고": {"lat": 55.8642, "lon": -4.2518, "owner": "영국", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 10, "포병": 3, "기병": 0, "공군": 0}},
         "브리스틀": {"lat": 51.4545, "lon": -2.5879, "owner": "영국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 1, "공군": 0}},
         "벨파스트": {"lat": 54.5973, "lon": -5.9301, "owner": "영국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 8, "포병": 2, "기병": 0, "공군": 0}},
-        "칼레 (영국 통제)": {"lat": 50.9513, "lon": 1.8587, "owner": "영국", "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 2}},
+        "더블린": {"lat": 53.3498, "lon": -6.2603, "owner": "영국", "morale": 90, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 2, "기병": 2, "공군": 0}},
+        "칼레 (영국 점령)": {"lat": 50.9513, "lon": 1.8587, "owner": "영국", "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 0, "공군": 2}},
+        "플리머스": {"lat": 50.3755, "lon": -4.1427, "owner": "영국", "morale": 100, "civ": 1, "mil": 2, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0}},
 
         # --- 독일 제국 ---
         "베를린": {"lat": 52.5200, "lon": 13.4050, "owner": "독일 제국", "morale": 100, "civ": 5, "mil": 4, "garrison": {"보병": 35, "포병": 15, "기병": 10, "공군": 10}},
@@ -84,18 +89,22 @@ if "initialized" not in st.session_state:
         "쾨니히스베르크": {"lat": 54.7104, "lon": 20.4522, "owner": "독일 제국", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0}},
         "드레스덴": {"lat": 51.0504, "lon": 13.7373, "owner": "독일 제국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 14, "포병": 5, "기병": 2, "공군": 0}},
         "키엘": {"lat": 54.3233, "lon": 10.1228, "owner": "독일 제국", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 12, "포병": 6, "기병": 1, "공군": 2}},
+        "단치히": {"lat": 54.3520, "lon": 18.6466, "owner": "독일 제국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
+        "에센": {"lat": 51.4556, "lon": 7.0116, "owner": "독일 제국", "morale": 100, "civ": 4, "mil": 3, "garrison": {"보병": 15, "포병": 12, "기병": 0, "공군": 0}},
 
         # --- 오스트리아-헝가리 ---
         "빈": {"lat": 48.2082, "lon": 16.3738, "owner": "오스트리아-헝가리", "morale": 100, "civ": 4, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 10, "공군": 2}},
         "부다페스트": {"lat": 47.4979, "lon": 19.0402, "owner": "오스트리아-헝가리", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 0}},
-        "프라하": {"lat": 50.0755, "lon": 14.4378, "owner": "오스트리아-헝가리", "morale": 100, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0}},
+        "프라하": {"lat": 50.0755, "lon": 14.4378, "owner": "오스트리아-헝가리", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 5, "기병": 0, "공군": 0}},
         "사라예보": {"lat": 43.8563, "lon": 18.4131, "owner": "오스트리아-헝가리", "morale": 85, "civ": 1, "mil": 0, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
         "트리에스테": {"lat": 45.6495, "lon": 13.7768, "owner": "오스트리아-헝가리", "morale": 90, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 4, "기병": 0, "공군": 0}},
         "크라쿠프": {"lat": 50.0647, "lon": 19.9450, "owner": "오스트리아-헝가리", "morale": 95, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 3, "공군": 0}},
         "그라츠": {"lat": 47.0707, "lon": 15.4395, "owner": "오스트리아-헝가리", "morale": 95, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 2, "공군": 0}},
         "인스부르크": {"lat": 47.2692, "lon": 11.4041, "owner": "오스트리아-헝가리", "morale": 95, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
-        "렘베르크(르비우)": {"lat": 49.8397, "lon": 24.0297, "owner": "오스트리아-헝가리", "morale": 90, "civ": 2, "mil": 2, "garrison": {"보병": 18, "포병": 6, "기병": 4, "공군": 0}},
+        "르비우": {"lat": 49.8397, "lon": 24.0297, "owner": "오스트리아-헝가리", "morale": 90, "civ": 2, "mil": 2, "garrison": {"보병": 18, "포병": 6, "기병": 4, "공군": 0}},
         "자그레브": {"lat": 45.8150, "lon": 15.9819, "owner": "오스트리아-헝가리", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
+        "브르노": {"lat": 49.1951, "lon": 16.6068, "owner": "오스트리아-헝가리", "morale": 95, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 3, "기병": 1, "공군": 0}},
+        "클루지나포카": {"lat": 46.7712, "lon": 23.6236, "owner": "오스트리아-헝가리", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 3, "공군": 0}},
 
         # --- 러시아 제국 ---
         "상트페테르부르크": {"lat": 59.9311, "lon": 30.3609, "owner": "러시아 제국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 40, "포병": 10, "기병": 15, "공군": 2}},
@@ -108,6 +117,9 @@ if "initialized" not in st.session_state:
         "스몰렌스크": {"lat": 54.7818, "lon": 32.0401, "owner": "러시아 제국", "morale": 95, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 3, "기병": 5, "공군": 0}},
         "빌뉴스": {"lat": 54.6872, "lon": 25.2797, "owner": "러시아 제국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 16, "포병": 4, "기병": 4, "공군": 0}},
         "하르키우": {"lat": 49.9935, "lon": 36.2304, "owner": "러시아 제국", "morale": 95, "civ": 2, "mil": 1, "garrison": {"보병": 14, "포병": 3, "기병": 6, "공군": 0}},
+        "탈린": {"lat": 59.4370, "lon": 24.7536, "owner": "러시아 제국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
+        "크림(세바스토폴)": {"lat": 44.6166, "lon": 33.5254, "owner": "러시아 제국", "morale": 95, "civ": 1, "mil": 2, "garrison": {"보병": 18, "포병": 8, "기병": 2, "공군": 0}},
+        "로스토프": {"lat": 47.2357, "lon": 39.7015, "owner": "러시아 제국", "morale": 95, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 8, "공군": 0}},
 
         # --- 이탈리아 ---
         "로마": {"lat": 41.9028, "lon": 12.4964, "owner": "이탈리아", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 20, "포병": 5, "기병": 5, "공군": 2}},
@@ -117,6 +129,7 @@ if "initialized" not in st.session_state:
         "토리노": {"lat": 45.0703, "lon": 7.6869, "owner": "이탈리아", "morale": 100, "civ": 2, "mil": 2, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
         "피렌체": {"lat": 43.7696, "lon": 11.2558, "owner": "이탈리아", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 1, "공군": 0}},
         "제노바": {"lat": 44.4056, "lon": 8.9463, "owner": "이탈리아", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 0, "공군": 0}},
+        "팔레르모": {"lat": 38.1157, "lon": 13.3615, "owner": "이탈리아", "morale": 95, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 1, "공군": 0}},
 
         # --- 오스만 제국 ---
         "이스탄불": {"lat": 41.0082, "lon": 28.9784, "owner": "오스만 제국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 25, "포병": 10, "기병": 5, "공군": 0}},
@@ -124,6 +137,25 @@ if "initialized" not in st.session_state:
         "이즈미르": {"lat": 38.4237, "lon": 27.1428, "owner": "오스만 제국", "morale": 95, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 3, "공군": 0}},
         "트라브존": {"lat": 41.0027, "lon": 39.7168, "owner": "오스만 제국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 4, "기병": 2, "공군": 0}},
         "살로니카": {"lat": 40.6401, "lon": 22.9444, "owner": "오스만 제국", "morale": 85, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 5, "기병": 2, "공군": 0}},
+        "다마스쿠스": {"lat": 33.5138, "lon": 36.2765, "owner": "오스만 제국", "morale": 85, "civ": 1, "mil": 1, "garrison": {"보병": 12, "포병": 2, "기병": 5, "공군": 0}},
+        "베이루트": {"lat": 33.8938, "lon": 35.5018, "owner": "오스만 제국", "morale": 85, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
+
+        # --- 중립국 및 기타 지역 ---
+        "마드리드": {"lat": 40.4168, "lon": -3.7038, "owner": "중립국", "morale": 100, "civ": 3, "mil": 1, "garrison": {"보병": 15, "포병": 3, "기병": 3, "공군": 0}},
+        "바르셀로나": {"lat": 41.3851, "lon": 2.1734, "owner": "중립국", "morale": 100, "civ": 3, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 1, "공군": 0}},
+        "암스테르담": {"lat": 52.3676, "lon": 4.9041, "owner": "중립국", "morale": 100, "civ": 3, "mil": 1, "garrison": {"보병": 15, "포병": 4, "기병": 1, "공군": 0}},
+        "브뤼셀": {"lat": 50.8503, "lon": 4.3517, "owner": "중립국", "morale": 100, "civ": 3, "mil": 2, "garrison": {"보병": 20, "포병": 5, "기병": 2, "공군": 0}},
+        "취리히": {"lat": 47.3769, "lon": 8.5417, "owner": "중립국", "morale": 100, "civ": 3, "mil": 1, "garrison": {"보병": 18, "포병": 5, "기병": 1, "공군": 0}},
+        "리스본": {"lat": 38.7223, "lon": -9.1393, "owner": "중립국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
+        "스톡홀름": {"lat": 59.3293, "lon": 18.0686, "owner": "중립국", "morale": 100, "civ": 3, "mil": 1, "garrison": {"보병": 15, "포병": 4, "기병": 2, "공군": 0}},
+        "코펜하겐": {"lat": 55.6761, "lon": 12.5683, "owner": "중립국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 12, "포병": 3, "기병": 1, "공군": 0}},
+        "오슬로": {"lat": 59.9139, "lon": 10.7522, "owner": "중립국", "morale": 100, "civ": 2, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 1, "공군": 0}},
+        "베오그라드": {"lat": 44.7866, "lon": 20.4489, "owner": "중립국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 18, "포병": 5, "기병": 3, "공군": 0}},
+        "부쿠레슈티": {"lat": 44.4323, "lon": 26.1063, "owner": "중립국", "morale": 90, "civ": 2, "mil": 1, "garrison": {"보병": 16, "포병": 4, "기병": 3, "공군": 0}},
+        "소피아": {"lat": 42.6977, "lon": 23.3219, "owner": "중립국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 15, "포병": 4, "기병": 3, "공군": 0}},
+        "아테네": {"lat": 37.9838, "lon": 23.7275, "owner": "중립국", "morale": 90, "civ": 2, "mil": 1, "garrison": {"보병": 14, "포병": 3, "기병": 2, "공군": 0}},
+        "알제": {"lat": 36.7538, "lon": 3.0588, "owner": "중립국", "morale": 90, "civ": 1, "mil": 1, "garrison": {"보병": 10, "포병": 2, "기병": 2, "공군": 0}},
+        "카이로": {"lat": 30.0444, "lon": 31.2357, "owner": "중립국", "morale": 90, "civ": 2, "mil": 1, "garrison": {"보병": 15, "포병": 3, "기병": 4, "공군": 0}},
     }
     st.session_state.player_country = "프랑스"
 
@@ -139,8 +171,8 @@ def process_ai_turn():
         c_data["manpower"] += int(c_data["pop"] * 0.002)
         c_data["supplies"] += c_data["mil_factories"] * 20
 
-    # 2) AI 제어 (플레이어 이외 국가)
-    ai_countries = [c for c in st.session_state.countries.keys() if c != st.session_state.player_country]
+    # 2) AI 제어 (플레이어 및 중립국 제외)
+    ai_countries = [c for c in st.session_state.countries.keys() if c != st.session_state.player_country and c != "중립국"]
     
     for country_name in ai_countries:
         c_data = st.session_state.countries[country_name]
@@ -160,7 +192,7 @@ def process_ai_turn():
                 break
 
         # AI 공격 시도
-        if random.random() < 0.4:
+        if random.random() < 0.45:
             from_city_name = random.choice(ai_cities)
             from_c = st.session_state.cities[from_city_name]
             
@@ -195,10 +227,12 @@ if not st.session_state.game_started:
     st.subheader("운영할 국가를 선택하고 대전략 게임을 시작하세요.")
     
     col_sel, col_info = st.columns([1, 2])
+    selectable_countries = [c for c in st.session_state.countries.keys() if c != "중립국"]
+    
     with col_sel:
         selected_player = st.selectbox(
             "플레이할 국가 선택:",
-            list(st.session_state.countries.keys())
+            selectable_countries
         )
         if st.button("🎮 게임 시작", use_container_width=True):
             st.session_state.player_country = selected_player
@@ -246,7 +280,7 @@ else:
     # ----------------------------------------------------
     # 5. 지도 시각화
     # ----------------------------------------------------
-    st.subheader(f"🗺️ 1914 유럽 전장 지도 (총 {len(st.session_state.cities)}개 도시)")
+    st.subheader(f"🗺️ 1914 유럽 및 대륙 전장 지도 (총 {len(st.session_state.cities)}개 도시)")
 
     fig = go.Figure()
 
@@ -268,7 +302,7 @@ else:
         lat=road_lats,
         lon=road_lons,
         mode="lines",
-        line=dict(width=1.0, color="#A6ACAF"),
+        line=dict(width=0.8, color="#B0BEC5"),
         hoverinfo="none",
         showlegend=False
     ))
@@ -292,8 +326,8 @@ else:
             hovertext=hover_text,
             mode="markers+text",
             textposition="top center",
-            textfont=dict(size=9),
-            marker=dict(size=10, color=country_color, line=dict(width=1, color="#000000")),
+            textfont=dict(size=8),
+            marker=dict(size=8, color=country_color, line=dict(width=1, color="#000000")),
             showlegend=False
         ))
 
@@ -306,7 +340,7 @@ else:
             lat=[from_c["lat"], to_c["lat"]],
             lon=[from_c["lon"], to_c["lon"]],
             mode="lines",
-            line=dict(width=3.5, color="#E74C3C", dash="dash"),
+            line=dict(width=3, color="#E74C3C", dash="dash"),
             showlegend=False
         ))
         fig.add_trace(go.Scattergeo(
@@ -314,24 +348,24 @@ else:
             lon=[to_c["lon"]],
             mode="text",
             text=["💥"],
-            textfont=dict(size=26),
+            textfont=dict(size=24),
             hoverinfo="none",
             showlegend=False
         ))
 
     fig.update_geos(
-        center=dict(lat=50, lon=15),
-        lataxis_range=[35, 63],
-        lonaxis_range=[-10, 42],
+        center=dict(lat=48, lon=15),
+        lataxis_range=[28, 65],
+        lonaxis_range=[-12, 45],
         showcountries=True,
-        countrycolor="#BDC3C7",
+        countrycolor="#CFD8DC",
         showland=True,
-        landcolor="#EAEDED",
+        landcolor="#ECEFF1",
         showocean=True,
-        oceancolor="#EBF5FB",
+        oceancolor="#E1F5FE",
         projection_type="natural earth"
     )
-    fig.update_layout(height=550, margin={"r":0, "t":10, "l":0, "b":0})
+    fig.update_layout(height=600, margin={"r":0, "t":10, "l":0, "b":0})
     st.plotly_chart(fig, use_container_width=True)
 
     if st.session_state.battle_logs:
